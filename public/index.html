@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SMART PARK — Shimla parking prediction</title>
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="mark">S</span>
+    <div>
+      <h1>SMART PARK</h1>
+      <p>Parking prediction &amp; booking · Shimla</p>
+    </div>
+  </div>
+  <div class="engine-status" id="engineStatus">
+    <span class="dot"></span><span id="engineLabel">connecting to C++ engine…</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab is-active" data-tab="predict">Predict</button>
+  <button class="tab" data-tab="list">List your space</button>
+  <button class="tab" data-tab="bookings">My bookings <span class="count" id="bookingCount">0</span></button>
+  <button class="tab" data-tab="engine">Engine &amp; data structures</button>
+</nav>
+
+<main>
+  <!-- ================= PREDICT ================= -->
+  <section class="panel is-active" id="panel-predict">
+    <div class="workspace">
+      <aside class="controls">
+        <h2 class="micro">Your journey</h2>
+
+        <label class="field">
+          <span>You are at</span>
+          <select id="origin"></select>
+        </label>
+
+        <label class="field">
+          <span>You want to park near</span>
+          <select id="dest"></select>
+        </label>
+
+        <div class="field">
+          <span>Vehicle</span>
+          <div class="segmented" id="vehicle">
+            <button data-v="2W" type="button">Two-wheeler</button>
+            <button data-v="4W" type="button" class="is-on">Hatchback / Sedan</button>
+            <button data-v="SUV" type="button">SUV</button>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>Arriving in</span>
+          <select id="offset">
+            <option value="0">Now</option>
+            <option value="10">10 minutes</option>
+            <option value="20" selected>20 minutes</option>
+            <option value="30">30 minutes</option>
+            <option value="45">45 minutes</option>
+            <option value="60">60 minutes</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Time of day <span class="val" id="hourOut">—</span></span>
+          <input type="range" id="hour" min="0" max="23" step="1" value="10" />
+          <small class="muted">Drag to simulate peak-hour traffic.</small>
+        </label>
+
+        <button class="btn primary" id="predictBtn">Predict best parking</button>
+
+        <div class="readout" id="trafficOut">
+          <div class="micro">Traffic on your corridor</div>
+          <strong id="trafficLabel">—</strong>
+          <div class="bar"><span id="trafficBar" style="width:0%"></span></div>
+        </div>
+
+        <p class="note">Model: slots in a lot are predicted 20 minutes ahead from
+          demand, live occupancy and road congestion. Ranking uses a priority-queue
+          score over predicted vacancy, drive time, price and walking distance.</p>
+      </aside>
+
+      <div class="map-wrap">
+        <svg id="map" viewBox="0 0 1000 720" preserveAspectRatio="xMidYMid meet" role="img"
+             aria-label="Map of Shimla parking areas"></svg>
+        <div class="legend">
+          <span><i class="swatch dot"></i>You</span>
+          <span><i class="swatch ring"></i>Destination</span>
+          <span><i class="swatch box"></i>Parking lot (predicted free)</span>
+          <span><i class="swatch line"></i>Best route</span>
+        </div>
+        <div class="map-foot">Dataset: 13 parking areas across Shimla · pedestrian-only
+          zones such as Ridge, Mall Road and Lakkar Bazar are excluded.</div>
+      </div>
+    </div>
+
+    <div class="results" id="results"></div>
+  </section>
+
+  <!-- ================= LIST SPACE ================= -->
+  <section class="panel" id="panel-list">
+    <div class="two-col">
+      <form class="form" id="spaceForm" novalidate>
+        <h2>Rent out your empty space</h2>
+        <p class="muted">Apartment stilt, shop front, courtyard — list it with the exact
+          details a driver needs. It appears on the map instantly for anyone booking.</p>
+
+        <div class="row">
+          <label class="field"><span>Owner name</span><input name="owner" required placeholder="e.g. R. Thakur" /></label>
+          <label class="field"><span>Phone</span><input name="phone" required placeholder="10-digit number" inputmode="numeric" /></label>
+        </div>
+
+        <label class="field"><span>Space name</span><input name="name" required placeholder="e.g. Sanjauli apartment stilt" /></label>
+
+        <div class="row">
+          <label class="field"><span>Area / locality</span><select name="node" id="spaceNode"></select></label>
+          <label class="field"><span>Total slots</span><input name="capacity" type="number" min="1" max="500" value="2" required /></label>
+        </div>
+
+        <div class="row">
+          <label class="field"><span>Charges (₹ per hour)</span><input name="price" type="number" min="0" max="500" value="20" required /></label>
+          <label class="field"><span>Open from</span><input name="from" type="time" value="07:00" /></label>
+          <label class="field"><span>Open till</span><input name="to" type="time" value="21:00" /></label>
+        </div>
+
+        <div class="field">
+          <span>Vehicle types allowed</span>
+          <div class="checks" id="spaceVehicles">
+            <label><input type="checkbox" value="2W" checked /> Two-wheeler</label>
+            <label><input type="checkbox" value="4W" checked /> Hatchback / Sedan</label>
+            <label><input type="checkbox" value="SUV" checked /> SUV</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <span>Convenience</span>
+          <div class="checks">
+            <label><input type="checkbox" name="covered" /> Covered</label>
+            <label><input type="checkbox" name="cctv" /> CCTV</label>
+            <label><input type="checkbox" name="guard" /> Guard on site</label>
+            <label><input type="checkbox" name="ev" /> EV charging</label>
+          </div>
+        </div>
+
+        <label class="field"><span>Notes for the driver</span>
+          <textarea name="notes" rows="3" placeholder="Gate on the left of the lane, tight entry, ask for caretaker…"></textarea>
+        </label>
+
+        <button class="btn primary" type="submit">Publish space</button>
+        <p class="form-msg" id="spaceMsg"></p>
+      </form>
+
+      <div class="side">
+        <h2 class="micro">Your listed spaces</h2>
+        <div id="mySpaces" class="stack"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= BOOKINGS ================= -->
+  <section class="panel" id="panel-bookings">
+    <div class="two-col">
+      <div>
+        <h2>Bookings</h2>
+        <p class="muted">A booking holds one slot in the lot; predictions for everyone
+          else drop by that amount immediately.</p>
+        <div id="bookingList" class="stack"></div>
+      </div>
+      <div class="side">
+        <h2 class="micro">Slot ledger</h2>
+        <p class="muted">Slots you have blocked in each lot.</p>
+        <div id="ledger" class="stack"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ENGINE ================= -->
+  <section class="panel" id="panel-engine">
+    <h2>How the prediction works</h2>
+    <div class="three-col">
+      <article class="doc">
+        <h3>1 · Graph of Shimla roads</h3>
+        <p>Thirteen localities are nodes; 18 road segments are weighted edges carrying
+          distance, road name and a congestion factor. Stored as an adjacency list:
+          <code>unordered_map&lt;string, vector&lt;Edge&gt;&gt;</code>.</p>
+      </article>
+      <article class="doc">
+        <h3>2 · Min-heap + Dijkstra</h3>
+        <p>Routes are computed with Dijkstra using a template min-heap priority queue.
+          Drive routing minimises travel time; walking routing minimises distance, so the
+          same graph answers "how far do I walk from this lot?".</p>
+      </article>
+      <article class="doc">
+        <h3>3 · Occupancy model</h3>
+        <p>Each lot has capacity, price, popularity and a demand curve. Free slots at
+          t+20 min = free now − (arrivals − departures) × 20, where arrivals scale with
+          demand and traffic. Confidence falls when the lot is near empty or near full.</p>
+      </article>
+    </div>
+
+    <div class="two-col">
+      <article class="doc">
+        <h3>Data structures used (all in C++)</h3>
+        <ul class="list">
+          <li><strong>Min-heap</strong> — Dijkstra's frontier and top-K parking selection.</li>
+          <li><strong>Graph (adjacency list)</strong> — roads and localities.</li>
+          <li><strong>Hash maps</strong> — node table, zone table, booked-slot counters.</li>
+          <li><strong>Vectors / arrays</strong> — per-lot 5-step availability timeline (+0…+60 min).</li>
+          <li><strong>Stable sort</strong> — final ranking of candidate lots by score.</li>
+          <li><strong>Stack (recursion via prev[])</strong> — path reconstruction after Dijkstra.</li>
+        </ul>
+      </article>
+      <article class="doc">
+        <h3>Scoring</h3>
+        <pre><code>score = 32% predicted free slots
+      + 26% drive time
+      + 17% walking distance to destination
+      + 12% price
+      + 13% convenience (covered / CCTV / guard / EV)</code></pre>
+        <p>If a lot is predicted to be full the score is cut by 40% and it is flagged
+          as <em>almost full</em> instead of hidden — the driver still sees the risk.</p>
+      </article>
+    </div>
+
+    <article class="doc">
+      <h3>Engine output (live)</h3>
+      <p class="muted">The browser never computes predictions: it POSTs your journey to the
+        Node bridge, which runs the compiled C++ binary and streams back JSON.</p>
+      <pre><code id="rawOutput">run a prediction to see raw engine output</code></pre>
+    </article>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>SMART PARK · parking prediction &amp; booking · Shimla dataset</span>
+  <span>Ridge · Mall Road · Lakkar Bazar intentionally excluded (no private parking)</span>
+</footer>
+
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>

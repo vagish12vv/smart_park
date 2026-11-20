@@ -1,0 +1,11 @@
+{
+  "name": "smart-park-shimla",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shimla parking prediction and booking (C++ data-structure engine + web UI)",
+  "scripts": {
+    "build:engine": "g++ -O2 -std=c++17 engine/engine.cpp -o engine/engine",
+    "start": "node server/server.js",
+    "dev": "node server/server.js"
+  }
+}
