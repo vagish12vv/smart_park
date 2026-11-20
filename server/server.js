@@ -111,7 +111,10 @@ const server = http.createServer((req, res) => {
       res.end("not found");
       return;
     }
-    res.writeHead(200, { "content-type": MIME[path.extname(file)] || "application/octet-stream" });
+    res.writeHead(200, {
+      "content-type": MIME[path.extname(file)] || "application/octet-stream",
+      "cache-control": "no-cache",
+    });
     res.end(buf);
   });
 });

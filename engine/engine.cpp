@@ -293,9 +293,8 @@ public:
       r.score = round(s * 10) / 10.0;
       out.push_back(r);
     }
-    // Top-K selection with the same min-heap idea, then final stable sort
+    // full ranking: best first, ties keep insertion order
     stable_sort(out.begin(), out.end(), [](const Result& a, const Result& b) { return a.score > b.score; });
-    if (out.size() > 6) out.resize(6);
     return out;
   }
 
@@ -360,6 +359,26 @@ public:
                  {"4W", "SUV"}, false, false, false, false, false, 0.65});
     addZone(Zone{"jutogh", "Jutogh Cantt Lot", "jutogh", "", 15, 10,
                  {"2W", "4W", "SUV"}, false, false, false, false, false, 0.50});
+
+    // ---- second and third options in the busier localities ----
+    addZone(Zone{"isbt-open", "ISBT Tutikandi Open Yard", "isbt", "", 34, 10,
+                 {"2W", "4W", "SUV"}, false, false, true, false, false, 0.85});
+    addZone(Zone{"annadale-green", "Annadale Green Ground", "annadale", "", 26, 12,
+                 {"2W", "4W", "SUV"}, false, false, false, false, false, 0.70});
+    addZone(Zone{"summerhill-bay", "Summer Hill Cart Road Bay", "summerhill", "", 9, 10,
+                 {"2W", "4W"}, false, false, false, false, false, 0.75});
+    addZone(Zone{"newshimla-bay", "New Shimla Sector-2 Bay", "newshimla", "", 20, 10,
+                 {"4W", "SUV"}, false, false, true, false, false, 0.80});
+    addZone(Zone{"kasumpti-open", "Kasumpti Open Ground", "kasumpti", "", 18, 8,
+                 {"2W", "4W", "SUV"}, false, false, false, false, false, 0.75});
+    addZone(Zone{"chhota-stilt", "Chhota Shimla Stilt Parking", "chhotashimla", "", 12, 10,
+                 {"4W"}, true, true, false, false, false, 0.85});
+    addZone(Zone{"khalini-2w", "Khalini Two-Wheeler Stand", "khalini", "", 16, 5,
+                 {"2W"}, false, false, true, false, false, 1.00});
+    addZone(Zone{"sanjauli-2w", "Sanjauli Two-Wheeler Stand", "sanjauli", "", 60, 5,
+                 {"2W"}, false, false, true, false, false, 1.10});
+    addZone(Zone{"dhalli-bus", "Dhalli Bus Stop Bay", "dhalli", "", 14, 8,
+                 {"2W", "4W"}, false, false, false, false, false, 0.80});
   }
 
   void addZone(const Zone& z) { zones[z.id] = z; }
@@ -432,43 +451,52 @@ static void emitResult(const ParkingEngine& eng, const string& origin, const str
   o << "\"hour\":" << hour << ",\"offset\":" << offset << ",";
   o << "\"traffic\":{\"factor\":" << jnum(tf, 2)
     << ",\"label\":" << jstr(ParkingEngine::trafficLabel(tf)) << "},";
-  o << "\"results\":[";
-  for (size_t i = 0; i < res.size(); i++) {
-    const auto& r = res[i];
-    if (i) o << ",";
-    o << "{";
-    o << "\"id\":" << jstr(r.z.id) << ",\"name\":" << jstr(r.z.name)
+  // one lot object: the ranked card and the map both read from this shape
+  auto lotJson = [&](const ParkingEngine::Result& r) {
+    ostringstream s;
+    s << "{\"id\":" << jstr(r.z.id) << ",\"name\":" << jstr(r.z.name)
       << ",\"node\":" << jstr(r.z.node) << ",\"capacity\":" << r.z.capacity
       << ",\"price\":" << jnum(r.z.price, 0) << ",\"vehicles\":[";
     for (size_t v = 0; v < r.z.vehicles.size(); v++) {
-      if (v) o << ",";
-      o << jstr(r.z.vehicles[v]);
+      if (v) s << ",";
+      s << jstr(r.z.vehicles[v]);
     }
-    o << "],\"covered\":" << jbool(r.z.covered) << ",\"cctv\":" << jbool(r.z.cctv)
+    s << "],\"covered\":" << jbool(r.z.covered) << ",\"cctv\":" << jbool(r.z.cctv)
       << ",\"guard\":" << jbool(r.z.guard) << ",\"ev\":" << jbool(r.z.ev)
-      << ",\"community\":" << jbool(r.z.community) << ",\"owner\":" << jstr(r.z.owner) << ",";
-    o << "\"predicted\":" << r.predicted << ",\"freeNow\":" << r.fNow
+      << ",\"community\":" << jbool(r.z.community) << ",\"owner\":" << jstr(r.z.owner)
+      << ",\"predicted\":" << r.predicted << ",\"freeNow\":" << r.fNow
       << ",\"score\":" << jnum(r.score, 1)
-      << ",\"confidence\":" << jnum(r.conf * 100, 0) << ",";
-    o << "\"etaMin\":" << jnum(r.etaMin, 0) << ",\"km\":" << jnum(r.km, 1)
-      << ",\"walkMin\":" << jnum(r.walkMin, 0) << ",";
-    o << "\"timeline\":[";
+      << ",\"confidence\":" << jnum(r.conf * 100, 0)
+      << ",\"etaMin\":" << jnum(r.etaMin, 0) << ",\"km\":" << jnum(r.km, 1)
+      << ",\"walkMin\":" << jnum(r.walkMin, 0) << ",\"timeline\":[";
     for (size_t t = 0; t < r.timeline.size(); t++) {
-      if (t) o << ",";
-      o << "{\"min\":" << r.timeline[t].first << ",\"free\":" << r.timeline[t].second << "}";
+      if (t) s << ",";
+      s << "{\"min\":" << r.timeline[t].first << ",\"free\":" << r.timeline[t].second << "}";
     }
-    o << "],\"route\":{\"stops\":[";
+    s << "],\"route\":{\"stops\":[";
     for (size_t n = 0; n < r.drive.nodes.size(); n++) {
-      if (n) o << ",";
-      o << nodeJson(r.drive.nodes[n]);
+      if (n) s << ",";
+      s << nodeJson(r.drive.nodes[n]);
     }
-    o << "],\"roads\":[";
+    s << "],\"roads\":[";
     for (size_t n = 0; n < r.drive.roads.size(); n++) {
-      if (n) o << ",";
-      o << jstr(r.drive.roads[n]);
+      if (n) s << ",";
+      s << jstr(r.drive.roads[n]);
     }
-    o << "],\"km\":" << jnum(r.drive.km, 1) << ",\"minutes\":" << jnum(r.drive.minutes, 0) << "}";
-    o << "}";
+    s << "],\"km\":" << jnum(r.drive.km, 1) << ",\"minutes\":" << jnum(r.drive.minutes, 0) << "}}";
+    return s.str();
+  };
+
+  size_t top = min<size_t>(6, res.size());
+  o << "\"results\":[";
+  for (size_t i = 0; i < top; i++) {
+    if (i) o << ",";
+    o << lotJson(res[i]);
+  }
+  o << "],\"all\":[";
+  for (size_t i = 0; i < res.size(); i++) {
+    if (i) o << ",";
+    o << lotJson(res[i]);
   }
   o << "]}\n";
   cout << o.str();

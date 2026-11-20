@@ -20,6 +20,7 @@ const state = {
   offset: 20,
   prediction: null,
   selectedId: null,
+  focusNode: null,
   spaces: LS.get("smartpark.spaces", []),
   bookings: LS.get("smartpark.bookings", []),
   lastRaw: null,
@@ -87,11 +88,16 @@ function renderAll() {
   renderMap($("#map"), state.meta, {
     prediction: d,
     selectedId: state.selectedId,
+    focusNode: state.focusNode,
     onSelect: (id) => {
-      if (d.results.some((r) => r.id === id)) {
-        state.selectedId = id;
-        renderAll();
-      }
+      const all = d.all || d.results;
+      if (!all.some((r) => r.id === id)) return;
+      state.selectedId = id;
+      renderAll();
+    },
+    onFocus: (nodeId) => {
+      state.focusNode = nodeId;
+      renderAll();
     },
   });
   renderResults();
@@ -126,18 +132,20 @@ function routeMarkup(r) {
 
 function renderResults() {
   const d = state.prediction;
-  const best = d.results.find((r) => r.id === state.selectedId) || d.results[0];
+  const all = d.all || d.results;
+  const best = all.find((r) => r.id === state.selectedId) || all[0];
   if (!best) {
     $("#results").innerHTML = `<div class="empty">No parking supports this vehicle type.</div>`;
     return;
   }
-  const isBest = d.results[0].id === best.id;
+  const rank = all.findIndex((r) => r.id === best.id) + 1;
+  const isBest = rank === 1;
   const offsetLabel = d.offset === 0 ? "right now" : `in ${d.offset} min`;
 
   $("#results").innerHTML = `
     <article class="card">
       <div class="card-head">
-        <span class="tag">${isBest ? "Best match" : "Alternative"}</span>
+        <span class="tag">${isBest ? "Best match" : `Option ${rank} of ${all.length}`}</span>
         <span class="score">score ${best.score} / 100</span>
       </div>
       <h3>${esc(best.name)}${best.community ? '<span class="badge">Community</span>' : ""}</h3>
@@ -167,7 +175,7 @@ function renderResults() {
 
     <div class="alt-wrap">
       <div class="card-head"><span class="tag">Other lots ranked by score</span>
-        <span class="score">${d.results.length} options</span></div>
+        <span class="score">${d.results.length} of ${all.length}</span></div>
       ${d.results.map((r, i) => `
         <div class="alt ${r.id === best.id ? "is-on" : ""}" data-select="${esc(r.id)}">
           <div>
@@ -194,7 +202,7 @@ function renderRaw() {
 
 /* ---------------- booking ---------------- */
 function book(zoneId) {
-  const r = state.prediction?.results.find((x) => x.id === zoneId);
+  const r = (state.prediction?.all || state.prediction?.results || []).find((x) => x.id === zoneId);
   if (!r) return;
   const start = new Date(Date.now() + state.offset * 60000);
   const code = "PK" + Math.random().toString(36).slice(2, 7).toUpperCase();

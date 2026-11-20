@@ -244,7 +244,23 @@ input[type="range"]::-moz-range-thumb {
 .swatch.dot { border-radius: 50%; background: var(--ink); }
 .swatch.ring { border: 2px solid var(--ink); }
 .swatch.box { border: 1px solid var(--ink); background: var(--paper); }
+.swatch.stack {
+  border: 1px solid var(--ink); background: var(--paper);
+  box-shadow: 3px -3px 0 -1px var(--paper), 3px -3px 0 0 var(--ink);
+}
 .swatch.line { height: 0; border-top: 3px solid var(--ink); }
+
+/* interactive SVG map */
+#map .zone-mark { cursor: pointer; }
+#map .zone-mark:hover .face { fill: #f1f1f1; }
+#map .zone-mark.is-focus .face { fill: var(--ink); }
+#map .zone-mark.is-focus text.val { fill: var(--paper); }
+#map .lot-row { cursor: pointer; }
+#map .lot-row .hit { fill: var(--paper); }
+#map .lot-row:hover .hit { fill: #f4f4f4; }
+#map .lot-row.is-on .hit { fill: var(--ink); }
+#map .lot-row.is-on:hover .hit { fill: #1c1c1c; }
+#map .route-line { stroke-linejoin: round; }
 .map-foot {
   padding: 8px 14px 12px;
   font-size: 10.5px;

@@ -18,6 +18,7 @@ ISBT Tutikandi ──▶ "park near Chhota Shimla" ──▶ ranked lots + route
 
 - **Future availability, not just "now"** — pick an arrival offset (now, +10, +20, +30, +45, +60 min) and see how many slots each lot is predicted to have at that moment.
 - **Best-parking ranking** — a weighted score over predicted vacancy, drive time, walking distance to your destination, price and convenience (covered / CCTV / guard / EV).
+- **Multiple options per area** — stacked lot markers tot up the predicted free slots for a locality; click one to open a card comparing every lot there (price, capacity, walk, score) and pick one.
 - **Route with traffic** — Dijkstra over the Shimla road graph, using time-of-day congestion factors; walking time to the destination comes from the same graph.
 - **Availability timeline** — a bar chart of predicted free slots for the next 60 minutes per lot.
 - **Confidence** — every prediction reports how reliable it is (falls when a lot is nearly empty or nearly full).
@@ -134,7 +135,8 @@ score = 0.32 × predicted vacancy
 ```
 
 A lot predicted to be full is **not hidden** — its score is cut by 40% and it is shown
-as an alternative, so the driver still sees the risk. The top 6 lots are returned.
+as an alternative, so the driver still sees the risk. The top 6 lots fill the results
+panel; the full ranking is returned too, so the map can show every option in an area.
 
 ---
 
@@ -185,24 +187,34 @@ the full route (`stops[]`, `roads[]`).
 
 ## Dataset
 
-13 parking areas across Shimla, each with capacity, hourly price, vehicle types and
-convenience features:
+22 parking options across 13 Shimla localities, each with capacity, hourly price,
+vehicle types and convenience features. Busier areas carry two competing lots, so the
+map can be opened to compare them side by side:
 
-| Locality | Lot | Slots |
-| --- | --- | --- |
-| ISBT Tutikandi | Multi-level | 60 |
-| Annadale | Ground parking | 50 |
-| Sanjauli | Bazaar lot | 40 |
-| Kasumpti | Bus stand lot | 35 |
-| Chhota Shimla | Market bay | 30 |
-| Dhalli | Bypass truck bay | 28 |
-| Panthaghati | Roadside bay | 25 |
-| Khalini | Office complex | 24 |
-| Summer Hill | Rail lot | 22 |
-| Boileauganj | Street lot | 20 |
-| Vikasnagar | Community lot | 18 |
-| Jutogh | Cantt lot | 15 |
-| New Shimla | Sector-3 bay | 45 |
+| Locality | Option | Slots | ₹/hr |
+| --- | --- | --- | --- |
+| ISBT Tutikandi | Multi-level | 60 | 20 |
+| ISBT Tutikandi | Open yard | 34 | 10 |
+| Annadale | Ground parking | 50 | 20 |
+| Annadale | Green ground | 26 | 12 |
+| Sanjauli | Bazaar lot | 40 | 15 |
+| Sanjauli | Two-wheeler stand | 60 | 5 |
+| Kasumpti | Bus stand lot | 35 | 15 |
+| Kasumpti | Open ground | 18 | 8 |
+| Chhota Shimla | Market bay | 30 | 20 |
+| Chhota Shimla | Stilt parking | 12 | 10 |
+| Dhalli | Bypass truck bay | 28 | 10 |
+| Dhalli | Bus stop bay | 14 | 8 |
+| Panthaghati | Roadside bay | 25 | 10 |
+| Khalini | Office complex | 24 | 15 |
+| Khalini | Two-wheeler stand | 16 | 5 |
+| Summer Hill | Rail lot | 22 | 15 |
+| Summer Hill | Cart Road bay | 9 | 10 |
+| Boileauganj | Street lot | 20 | 25 |
+| Vikasnagar | Community lot | 18 | 10 |
+| Jutogh | Cantt lot | 15 | 10 |
+| New Shimla | Sector-3 bay | 45 | 10 |
+| New Shimla | Sector-2 bay | 20 | 10 |
 
 **Ridge, Mall Road and Lakkar Bazar are deliberately excluded** — they are
 pedestrian-only areas with no private or public car parking. Locality coordinates and
